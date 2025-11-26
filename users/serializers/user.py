@@ -1,0 +1,60 @@
+
+from rest_framework import serializers
+from users.models import User, TermsAcknowledgement
+
+class UserSerializer(serializers.ModelSerializer):
+    responsible_member_name = serializers.ReadOnlyField(source='responsible_member.get_full_name')
+    name = serializers.SerializerMethodField()
+    has_acknowledged_terms = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        # FIX: Added 'password' to this list
+        fields = [
+            'id', 'username', 'password', 'name', 'first_name', 'last_name', 'email', 
+            'role', 'marital_status', 'phone', 'profile_photo', 
+            'assigned_monthly_amount', 'responsible_member', 
+            'responsible_member_name', 'date_joined',
+            'has_acknowledged_terms'
+        ]
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def get_name(self, obj):
+        full_name = obj.get_full_name()
+        return full_name if full_name else obj.username
+    
+    def get_has_acknowledged_terms(self, obj):
+        return hasattr(obj, 'terms_acknowledgement')
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        instance = self.Meta.model(**validated_data)
+        if password is not None:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
+# --- NEW SERIALIZER (Safe for Public Lists) ---
+class PublicUserSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 
+            'name', 
+            'role', 
+            'marital_status', 
+            'profile_photo', 
+            'responsible_member' 
+        ]
+
+    def get_name(self, obj):
+        full_name = obj.get_full_name()
+        return full_name if full_name else obj.username
+
+class TermsAcknowledgementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TermsAcknowledgement
+        fields = ['id', 'user', 'acknowledged_at', 'ip_address', 'user_agent']
+        read_only_fields = ['user', 'acknowledged_at', 'ip_address', 'user_agent']

@@ -21,15 +21,11 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return Payment.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        # Save payment (recorded_by is set in the serializer)
         payment = serializer.save()
         
-        # Trigger notification service
         process_payment_recording(payment, self.request.user)
 
     def perform_update(self, serializer):
-        # Save updated payment
         payment = serializer.save()
         
-        # Trigger notification service
         process_payment_recording(payment, self.request.user)

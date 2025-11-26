@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
+import os
 
 class User(AbstractUser):
     class Roles(models.TextChoices):
@@ -48,7 +49,27 @@ class User(AbstractUser):
         # Auto-set Admin role if this is a superuser
         if self.is_superuser and not self.role:
             self.role = self.Roles.ADMIN
+            
+        # Check if profile_photo is being updated
+        if self.pk:  # Only for existing users
+            try:
+                old_user = User.objects.get(pk=self.pk)
+                # If the profile photo is changing, delete the old one
+                if old_user.profile_photo and self.profile_photo != old_user.profile_photo:
+                    # Delete the old profile photo file from storage
+                    if old_user.profile_photo and os.path.isfile(old_user.profile_photo.path):
+                        os.remove(old_user.profile_photo.path)
+            except User.DoesNotExist:
+                pass  # User is new, no old photo to delete
+        
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Delete profile photo file when user is deleted
+        if self.profile_photo:
+            if os.path.isfile(self.profile_photo.path):
+                os.remove(self.profile_photo.path)
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

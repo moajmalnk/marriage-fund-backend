@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from users.models import User, TermsAcknowledgement
 
@@ -6,6 +5,7 @@ class UserSerializer(serializers.ModelSerializer):
     responsible_member_name = serializers.ReadOnlyField(source='responsible_member.get_full_name')
     name = serializers.SerializerMethodField()
     has_acknowledged_terms = serializers.SerializerMethodField()
+    profile_photo = serializers.ImageField(use_url=True, required=False)  # Ensure full URL is provided
     
     class Meta:
         model = User
@@ -37,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
 # --- NEW SERIALIZER (Safe for Public Lists) ---
 class PublicUserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
+    profile_photo = serializers.ImageField(use_url=True, required=False)  # Ensure full URL is provided
 
     class Meta:
         model = User

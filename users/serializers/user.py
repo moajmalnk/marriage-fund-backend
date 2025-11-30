@@ -34,6 +34,18 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password) # This handles the hashing
+            
+        instance.save()
+        return instance
+
 # --- NEW SERIALIZER (Safe for Public Lists) ---
 class PublicUserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
@@ -59,3 +71,5 @@ class TermsAcknowledgementSerializer(serializers.ModelSerializer):
         model = TermsAcknowledgement
         fields = ['id', 'user', 'acknowledged_at', 'ip_address', 'user_agent']
         read_only_fields = ['user', 'acknowledged_at', 'ip_address', 'user_agent']
+
+

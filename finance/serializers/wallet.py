@@ -11,9 +11,10 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'user_name', 'amount', 'transaction_type', 
             'payment_method', 'transaction_id', 'notes', 'date', 
-            'recorded_by', 'recorded_by_name', 'created_at'
+            'recorded_by', 'recorded_by_name', 'created_at',
+            'status'  # <--- ADD THIS
         ]
-        read_only_fields = ['user', 'recorded_by', 'created_at']
+        read_only_fields = ['user', 'recorded_by', 'created_at', 'status']
 
     def validate(self, data):
         """

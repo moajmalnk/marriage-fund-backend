@@ -3,6 +3,8 @@ from finance.models import Payment
 from django.utils import timezone
 
 class PaymentSerializer(serializers.ModelSerializer):
+
+    request_id = serializers.IntegerField(required=False, write_only=True)
     # Flatten these fields so frontend gets names directly
     user_name = serializers.ReadOnlyField(source='user.get_full_name')
     recorded_by_name = serializers.ReadOnlyField(source='recorded_by.get_full_name')
@@ -12,7 +14,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'user_name', 'amount', 'transaction_type', 
             'date', 'time', 'recorded_by', 'recorded_by_name', 
-            'notes', 'created_at'
+            'notes', 'created_at', 'request_id' 
         ]
 
         read_only_fields = ['recorded_by']
@@ -27,6 +29,18 @@ class PaymentSerializer(serializers.ModelSerializer):
         """
         request_user = self.context['request'].user
         target_user_id = data.get('user')
+        
+        # For disbursement transactions, get user from the request if not provided
+        if data.get('transaction_type') == 'DISBURSE' and not target_user_id:
+            request_id = data.get('request_id')
+            if request_id:
+                try:
+                    from finance.models import FundRequest
+                    fund_request = FundRequest.objects.get(id=request_id)
+                    target_user_id = fund_request.user.id
+                    data['user'] = fund_request.user
+                except FundRequest.DoesNotExist:
+                    raise serializers.ValidationError({'request_id': 'Invalid request ID.'})
 
         # Set recorded_by to the requesting user
         data['recorded_by'] = request_user

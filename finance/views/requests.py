@@ -5,9 +5,7 @@ from django.db.models import Q
 from django.utils import timezone
 from finance.models import FundRequest
 from finance.serializers import FundRequestSerializer
-from finance.services import process_fund_approval 
 from finance.services import process_fund_approval, process_fund_rejection 
-
 
 class FundRequestViewSet(viewsets.ModelViewSet):
     serializer_class = FundRequestSerializer
@@ -26,10 +24,27 @@ class FundRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, status='PENDING')
 
+    @action(detail=False, methods=['get'])
+    def approved_unpaid(self, request):
+        """
+        Returns list of requests that are APPROVED but NOT YET PAID.
+        Used for the 'Disburse Payment' dropdown.
+        """
+        if request.user.role not in ['admin', 'responsible_member']:
+             return Response({'error': 'Not authorized.'}, status=403)
+
+        requests = FundRequest.objects.filter(
+            status='APPROVED',
+            payment_status__in=['PENDING', 'PARTIAL']
+        ).select_related('user')
+        
+        serializer = self.get_serializer(requests, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         if request.user.role != 'admin':
-            return Response({'error': 'Not authorized.'}, status=403)
+             return Response({'error': 'Not authorized.'}, status=403)
             
         fund_request = self.get_object()
         if fund_request.status == 'APPROVED':
@@ -52,4 +67,3 @@ class FundRequestViewSet(viewsets.ModelViewSet):
         process_fund_rejection(fund_request, request.user, reason)
         
         return Response({'status': 'declined'})
-    

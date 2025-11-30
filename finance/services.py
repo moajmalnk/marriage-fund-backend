@@ -6,7 +6,8 @@ from .models import Payment, Notification, WalletTransaction
 
 def process_fund_approval(fund_request, user, payment_date=None):
     """
-    Handles the approval logic: Updates status, Creates Disbursement Payment, Notifies User.
+    Handles the approval logic: Updates status only.
+    Payment is now a separate manual step.
     """
     with transaction.atomic():
         if payment_date and isinstance(payment_date, str):
@@ -15,34 +16,24 @@ def process_fund_approval(fund_request, user, payment_date=None):
             except ValueError:
                 payment_date = timezone.now().date()
 
-        # 1. Update Request
+        # 1. Update Request Status
         fund_request.status = 'APPROVED'
         fund_request.reviewed_by = user
         fund_request.reviewed_at = timezone.now()
         
+        # 2. Set Payment Status to PENDING (Waiting for manual disbursement)
+        fund_request.payment_status = 'PENDING' 
+        
         if payment_date:
             fund_request.scheduled_payment_date = payment_date
             
-        # 2. Create Disbursement Record
-        Payment.objects.create(
-            user=fund_request.user,
-            amount=fund_request.amount,
-            transaction_type=Payment.TransactionType.DISBURSE,
-            date=payment_date if payment_date else timezone.now().date(),
-            recorded_by=user,
-            notes=f"Auto-disbursement for Request #{fund_request.id}"
-        )
-        
-        # 3. Update Paid Status
-        fund_request.payment_status = 'PAID'
-        fund_request.paid_amount = fund_request.amount
         fund_request.save()
         
-        # 4. Notify User
+        # 3. Notify User
         Notification.objects.create(
             user=fund_request.user,
             title="Fund Request Approved! 🎉",
-            message=f"Your fund request of ₹{fund_request.amount} has been approved. The payment will be disbursed on {payment_date.strftime('%d %B %Y')}.",
+            message=f"Your fund request of ₹{fund_request.amount} has been approved. You will receive the funds on or before {payment_date or 'the scheduled date'}.",
             notification_type=Notification.Type.SUCCESS,
             priority=Notification.Priority.HIGH
         )
@@ -98,3 +89,25 @@ def process_wallet_transaction(wallet_transaction, user):
         notification_type=Notification.Type.PAYMENT,
         priority=Notification.Priority.LOW
     )
+
+def create_wedding_announcement(admin_user, title, message, priority='HIGH'):
+    """
+    Broadcasts an announcement to ALL users.
+    """
+    users = User.objects.all()
+    notifications = []
+    
+    for user in users:
+        notifications.append(
+            Notification(
+                user=user,
+                title=title,
+                message=message,
+                notification_type=Notification.Type.ANNOUNCEMENT,
+                priority=priority, # Use the passed priority
+                related_object_id=admin_user.id,
+                related_object_type='broadcast_by_admin'
+            )
+        )
+    
+    Notification.objects.bulk_create(notifications)

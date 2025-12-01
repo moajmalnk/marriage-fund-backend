@@ -1,10 +1,10 @@
+import time
+import random
 from django.db import transaction
 from django.utils import timezone
 from datetime import datetime 
-from users.models import User
-import time
-import random
-from .models import Notification, User
+from users.models import User  # <--- Imported correctly from users app
+from .models import Payment, Notification, WalletTransaction # <--- Imported from current finance app
 
 def process_fund_approval(fund_request, user, payment_date=None):
     """
@@ -99,6 +99,8 @@ def create_wedding_announcement(admin_user, title, message, priority='HIGH'):
     users = User.objects.all()
     notifications = []
     
+    # Generate a unique Batch ID (Timestamp + Random)
+    # This allows the 'perform_destroy' view to identify this specific group of messages
     batch_id = int(str(int(time.time()))[-5:] + str(random.randint(1000, 9999)))
     
     for user in users:

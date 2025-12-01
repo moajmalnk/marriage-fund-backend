@@ -240,3 +240,28 @@ class NotificationViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Title and message are required.'}, status=400)
         create_wedding_announcement(request.user, title, message, priority)
         return Response({'status': 'Announcement sent to all members'})
+    
+    def perform_destroy(self, instance):
+        """
+        Custom delete logic:
+        If Admin deletes a 'broadcast' announcement, delete it for EVERYONE.
+        If a Member deletes it, only delete THEIR copy.
+        """
+        user = self.request.user
+        
+        # Check if this is a broadcast announcement
+        is_broadcast = instance.related_object_type == 'broadcast'
+        has_batch_id = instance.related_object_id is not None
+
+        # ADMIN "RECALL" LOGIC
+        if user.role == 'admin' and is_broadcast and has_batch_id:
+            # Delete ALL notifications with this specific Batch ID
+            count, _ = Notification.objects.filter(
+                related_object_type='broadcast',
+                related_object_id=instance.related_object_id
+            ).delete()
+            print(f"Admin recalled announcement. Deleted {count} copies.")
+            
+        # NORMAL DELETE LOGIC (Member clearing their inbox)
+        else:
+            instance.delete()

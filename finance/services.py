@@ -2,7 +2,9 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import datetime 
 from users.models import User
-from .models import Payment, Notification, WalletTransaction
+import time
+import random
+from .models import Notification, User
 
 def process_fund_approval(fund_request, user, payment_date=None):
     """
@@ -92,10 +94,12 @@ def process_wallet_transaction(wallet_transaction, user):
 
 def create_wedding_announcement(admin_user, title, message, priority='HIGH'):
     """
-    Broadcasts an announcement to ALL users.
+    Broadcasts an announcement to ALL users with a unique Batch ID.
     """
     users = User.objects.all()
     notifications = []
+    
+    batch_id = int(str(int(time.time()))[-5:] + str(random.randint(1000, 9999)))
     
     for user in users:
         notifications.append(
@@ -104,9 +108,9 @@ def create_wedding_announcement(admin_user, title, message, priority='HIGH'):
                 title=title,
                 message=message,
                 notification_type=Notification.Type.ANNOUNCEMENT,
-                priority=priority, # Use the passed priority
-                related_object_id=admin_user.id,
-                related_object_type='broadcast_by_admin'
+                priority=priority,
+                related_object_id=batch_id,      # <--- The Batch ID
+                related_object_type='broadcast'  # <--- Matches your view logic
             )
         )
     

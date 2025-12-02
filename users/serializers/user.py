@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'marital_status', 'phone', 'profile_photo', 
             'assigned_monthly_amount', 'responsible_member', 
             'responsible_member_name', 'date_joined',
-            'has_acknowledged_terms'
+            'has_acknowledged_terms', 'is_active'
         ]
         extra_kwargs = {'password': {'write_only': True}}
 

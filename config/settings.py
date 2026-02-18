@@ -109,7 +109,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",          
     "http://127.0.0.1:5173",        
     "http://localhost:8081",        
-    "http://127.0.0.1:8081",          
+    "http://127.0.0.1:8081",
+]
+
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-skip-auth-interceptor',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
